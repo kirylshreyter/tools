@@ -1,65 +1,76 @@
 package com.kirylshreyter.tools.parser.impl;
 
-import java.io.BufferedReader;
 import java.io.FileNotFoundException;
-import java.io.FileReader;
-import java.util.ArrayList;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.Map.Entry;
 
 import com.kirylshreyter.tools.parser.IParser;
+import com.kirylshreyter.tools.parser.converters.JsonConverters;
 import com.kirylshreyter.tools.parser.exeptions.NotValidJsonFileToParseExeption;
+import com.kirylshreyter.tools.parser.utils.JsonUtils;
+import com.kirylshreyter.tools.parser.validation.JsonValidation;
 
 public class IParserJsonImpl implements IParser {
+	JsonValidation validation = new JsonValidation();
+	JsonConverters converters = new JsonConverters();
+	JsonUtils utils = new JsonUtils();
 
-	public <T> Object parse(String sourceFile) throws FileNotFoundException {
-		List<String> list = getStringArrayOfJsonFile(sourceFile);
-		String fullString = getJsonStringFromJsonStringArray(list);
+	@Override
+	public <T> Object fromJson(String sourceFile, Class<?> clazz) throws FileNotFoundException {
+		List<String> list = converters.getJsonStringArrayFromJsonFile(sourceFile);
+		String fullString = utils.removeLiteralsFromJsonString(converters.getJsonStringFromJsonStringArray(list));
 
-		if (checkIfJsonStringIsValid(fullString)) {
+		validation.checkIfJsonStringIsValid(fullString);
 
-		} else {
-			throw new NotValidJsonFileToParseExeption("Provided JSON file is NOT correct file for parsing.");
-		}
-		;
+		String string = converters.getStringObjectsArrayFromJsonString(fullString);
 
-		return null;
-	}
+		Object convertedObject = null;
+		HashMap<LinkedList<Object>, LinkedList<Object>> hashMap = new HashMap<>();
+		converters.splitStringObjectToStringFieldsMap(string, hashMap);
+		convertedObject = utils.createInstanceOfClass(clazz);
+		Method methods[] = convertedObject.getClass().getDeclaredMethods();
 
-	private String getJsonStringFromJsonStringArray(List<String> list) {
-		StringBuilder builder = new StringBuilder();
-		for (int i = 0; i < list.size(); i++) {
-			builder.append(list.get(i));
-		}
-		return builder.toString();
-	}
+		Iterator<Entry<LinkedList<Object>, LinkedList<Object>>> iterator = hashMap.entrySet().iterator();
+		LinkedList<Object> keySet = null;
+		LinkedList<Object> valueSet = null;
 
-	private List<String> getStringArrayOfJsonFile (String sourceFile) throws FileNotFoundException {
-		List<String> list = new ArrayList<String>();
-		try (BufferedReader br = new BufferedReader(new FileReader(sourceFile))) {
-			String tempotyBufferString;
-			while ((tempotyBufferString = br.readLine()) != null) {
-				list.add(tempotyBufferString);
+		if (iterator.hasNext()) {
+			Entry<LinkedList<Object>, LinkedList<Object>> pair = iterator.next();
+			keySet = pair.getKey();
+			valueSet = pair.getValue();
+
+			for (int j = 0; j < keySet.size(); j++) {
+				String str = keySet.get(j).toString();
+				for (int x = 0; x < methods.length; x++) {
+					if (methods[x].getName().toLowerCase().contains(str)
+							& methods[x].getName().toLowerCase().contains("set")) {
+						try {
+							methods[x].invoke(convertedObject, valueSet.get(j));
+						} catch (IllegalAccessException e) {
+							// TODO Auto-generated catch block
+							e.printStackTrace();
+						} catch (IllegalArgumentException e) {
+							throw new NotValidJsonFileToParseExeption();
+						} catch (InvocationTargetException e) {
+							// TODO Auto-generated catch block
+							e.printStackTrace();
+						}
+					}
+				}
 			}
-		} catch (Exception e) {
-			e.printStackTrace();
 		}
-		return list;
+		return convertedObject;
 	}
 
-	private boolean checkIfJsonStringIsValid(String jsonString) {
-		int bracket_couter = 0;
-		int brace_couter = 0;
-		for (int i = 0; i < jsonString.length(); i++) {
-			if (jsonString.charAt(i) == '[' | jsonString.charAt(i) == ']') {
-				bracket_couter++;
-			} else if (jsonString.charAt(i) == '{' | jsonString.charAt(i) == '}') {
-				brace_couter++;
-			}
-		}
-		if ((bracket_couter % 2 == 0) && (brace_couter % 2 == 0)) {
-			return true;
-		} else {
-			return false;
-		}
+	@Override
+	public boolean toJson(String fileName, Object objectToSave) {
+		// TODO Auto-generated method stub
+		return false;
 	}
+
 }

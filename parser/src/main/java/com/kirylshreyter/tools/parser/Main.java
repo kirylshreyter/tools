@@ -8,9 +8,9 @@ public class Main {
 
 	public static void main(String[] args) throws FileNotFoundException {
 		IParser parser = new IParserJsonImpl();
-		parser.parse(
-				"D:/java/workspace/training_2017/hometasks/src/main/java/com/kirylshreyter/training_2017/hometasks/parser/sample.json");
-
+		TestObject1 object1 = new TestObject1();
+		object1 = (TestObject1) parser.fromJson("E:/java/workspaces/tools/parser/src/main/java/com/kirylshreyter/tools/parser/sample.json", TestObject1.class);
+		System.out.println(object1.toString());
 	}
 
 }
